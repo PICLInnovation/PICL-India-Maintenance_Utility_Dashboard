@@ -209,7 +209,7 @@ const sum=a=>a.reduce((x,y)=>x+y,0),avg=a=>a.length?sum(a)/a.length:0,mk=()=>({d
 let S=mk(),charts={};if(window.ChartDataLabels)Chart.register(ChartDataLabels);
 const fm=v=>v==null?'':Math.abs(v)>=10000?(v/1000).toFixed(1)+'k':f(v,Math.abs(v)<10&&v%1?1:0),DL=(show,o={})=>({display:show,formatter:fm,font:{size:9,weight:'600'},color:getComputedStyle(document.body).getPropertyValue('--tx').trim()||'#162929',clip:false,...o});
 const MO=[...new Set(D.dates.map(d=>d.slice(0,7)))],Mi=()=>S.mode==='day'?monthDays(S.mo):selDays(),lastOf=()=>Mi().pop();
-const G=[['Departments',[['Assembly','⚙ Assembly Lines'],['Winding','〰 Winding Lines'],['Others','▣ Others (BLDC, Rotor, R&D…)']]],['Operational Area',[['Utility','⚡ Operational Area Consumption']]],['Fix Consumption',[['F_all','Σ HVAC + Utility + Lighting'],['F_hvac','❄ Total HVAC'],['F_comp','⚙ Total Utility / Compressor'],['F_light','💡 Total Lighting']]],['Total Electricity',[['E_tel','Σ Consumption & Cost'],['E_city','DHBVN (KVAH)'],['E_sol','Solar'],['E_dg','DG (KWH)']]],['Fuel, Gas & Water',[['E_png','PNG (Gas)'],['E_dsl','Diesel'],['E_wtr','Water']]]];
+const G=[['Departments',[['Assembly','⚙ Assembly Lines'],['Winding','〰 Winding Lines'],['Others','▣ Others (BLDC, Rotor, R&D…)']]],['Operational Area',[['Utility','⚡ Operational Area Consumption']]],['Fix Consumption',[['F_all','Σ HVAC + Utility + Lighting'],['F_hvac','❄ Total HVAC'],['F_comp','⚙ Total Utility / Compressor'],['F_light','💡 Total Lighting']]],['Total Electricity',[['E_tel','Σ Consumption & Cost'],['E_city','DHBVN (KVAH)'],['E_sol','Solar'],['E_dg','DG (KWH)']]],['Fuel, Gas & Water',[['E_png','PNG (Gas)'],['E_dsl','Diesel'],['E_wtr','Water']]],['Monthly Comparison',[['CMP','📊 Month vs Month']]]];
 $('nav').innerHTML=G.map(([g,l])=>`<div class="grp open"><button onclick="this.parentNode.classList.toggle('open')"><span>${g}</span><i>▶</i></button><div class="sub">${l.map(([k,t])=>`<button class="it" data-k="${k}" onclick="go('${k}')">${t}</button>`).join('')}</div></div>`).join('');
 const Q=['⚡ What gets measured gets saved: track every kWh.','💡 Switch off idle machines, lights and AC: small habits, big savings.','📉 A flat trend today is a bill saved tomorrow.','🔌 Check the gap between total and sub-metered load: that is where losses hide.'];
 const CAT_EMO={ENERGY:'\u26A1',SAVING:'\u{1F4A1}',TREND:'\u{1F4C9}',LOSS:'\u{1F50C}'};
@@ -285,8 +285,9 @@ function fixLabels(){
  if(S.view==='lead'&&S.gran!=='daily')R.push(['Daily Trend',GN[S.gran]+' Trend']);
  const w=document.createTreeWalker(pg,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){if(cr&&cr.contains(n))continue;let v=n.nodeValue,o=v;R.forEach(([a,b])=>{if(v.includes(a))v=v.split(a).join(b)});if(!cal)v=v.replace(/Period Total · [A-Za-z]+ \d{4}/,'Period Total · '+perLabel());if(v!==o)n.nodeValue=v}
 }
-function draw(){syncMode();draw0();syncFilters();bucketCharts();fixLabels()}
+function draw(){const cmpPg=S.dep==='CMP';document.querySelector('.fbar').style.display=cmpPg?'none':'';syncMode();draw0();syncFilters();if(cmpPg)return;bucketCharts();fixLabels()}
 function draw0(){
+ if(S.dep==='CMP')return drawC();
  $('fag').style.display=S.dep==='Utility'?'':'none';if(FX[S.dep])return drawF();
  if(P[S.dep])return drawE();if(S.dep==='Utility')S.it='all';$('fl').parentNode.style.display=$('fb').parentNode.style.display=S.dep==='Utility'?'none':'';
  const IT=items(),names=IT.map(x=>x.n),M=Mi(),day=S.mode==='day';if(S.it!=='all'&&!names.includes(S.it))S.it='all';
@@ -354,6 +355,8 @@ const BK=(S.dep==='Assembly'||S.dep==='Winding')?D[S.dep].filter(x=>S.it==='all'
 }
 
 const E=D.E,cum=a=>{let s=0,m='';return a.map((v,i)=>{const mm=D.dates[i].slice(0,7);if(mm!==m){m=mm;s=0}return s+=v})},rt=(c,u)=>c.map((v,i)=>u[i]?v/u[i]:0);
+/* PNG (gas) cost = SCM x 0.035 MMBTU/SCM x PNG_MMBTU (Rs per MMBTU). Change the number below if the gas price changes. Used in the PNG section only. */
+const PNG_MMBTU=2250,PNG_SCM=0.035*PNG_MMBTU,gasCost=E.pu.map(v=>v*PNG_SCM);
 var P={
 E_tel:{t:'Total Electricity',h:'Total Electricity Consumption',u:'units',tar:'Total Power & Fuel Cost ÷ Total Electricity',cons:E.tel,cost:E.tcost,bd:[['DHBVN (KVAH)',E.cu,E.cc],['Solar',E.su,E.sc],['DG (KWH)',E.du,E.dc],['PNG (Gas) · SCM',E.pu,E.pc,1]],c2:{t:'Source Mix · Units by Source',stack:1,sets:[{n:'DHBVN',v:E.cu},{n:'Solar',v:E.su},{n:'DG',v:E.du}]},
  cols:[['DHBVN units',E.cu],['Solar units',E.su],['DG kWh',E.du],['Total units',E.tel],['DHBVN ₹',E.cc],['Solar ₹',E.sc],['DG diesel ₹',E.dc],['PNG gas ₹',E.pc],['Total P&F cost ₹',E.tcost],['₹ / unit',0,E.tcost,E.tel]]},
@@ -361,7 +364,7 @@ E_city:{t:'Electricity (DHBVN)',u:'KVAH',tar:'Tariff ₹9.00 / unit',cons:E.cu,c
 E_sol:{t:'Electricity (Solar)',u:'units',tar:'Rate ₹4.50 / unit',cons:E.su,cost:E.sc,cols:[['Consumption (units)',E.su],['Cost ₹',E.sc]]},
 E_dg:{t:'DG (KWH)',u:'kWh',tar:'₹/kWh on days with both kWh & diesel entered',cons:E.du,cost:E.dc,x:[['DG SFC',E.sfc,'kWh/L',2,'avg'],['Diesel used in DG',E.dL,'L',0,'avg']],c2:{t:'Diesel Used vs SFC',sets:[{n:'Diesel in DG (L)',v:E.dL,t:'bar',c:'#4db6ac'},{n:'SFC (kWh/L)',v:E.sfc,y:'y1',c:'#37474f'}]},
  cols:[['DG kWh',E.du],['Diesel in DG (L)',E.dL],['SFC (kWh/L)',0,E.du,E.dL],['Diesel cost ₹',E.dc],['₹ / kWh',0,E.dc,E.du]]},
-E_png:{t:'PNG (Gas)',u:'SCM',tar:'₹66.85 / SCM (0.035 MMBTU × ₹1910)',cons:E.pu,cost:E.pc,cols:[['Meter reading (SCM)',E.pr],['Consumption (SCM)',E.pu],['Cost ₹',E.pc]]},
+E_png:{t:'PNG (Gas)',u:'SCM',tar:'₹'+f(PNG_SCM,2)+' / SCM (0.035 MMBTU × ₹'+f(PNG_MMBTU,0)+')',cons:E.pu,cost:gasCost,cols:[['Meter reading (SCM)',E.pr],['Consumption (SCM)',E.pu],['Cost ₹',gasCost]]},
 E_dsl:{t:'Diesel',u:'L',tar:'Rate ₹95.94 / L',cons:E.dt,cost:E.dc,x:[['Closing balance',E.cl,'L',0,'last']],cols:[['Opening (L)',E.op],['Received (L)',E.rc],['Used in DG (L)',E.dL],['Other use (L)',E.ot],['Closing (L)',E.cl],['Cost ₹',E.dc]]}};
 P.E_wtr={t:'Water',u:'KL',tar:'Tanker ₹85 / KL; HSIIDC has no rate in sheet',cons:E.wv,cost:E.wc,x:[['Tanker water',E.wt,'KL',1,'avg'],['HSIIDC water',E.wh,'KL',1,'avg']],c2:{t:'Water Source Mix · KL',stack:1,sets:[{n:'Tanker',v:E.wt},{n:'HSIIDC',v:E.wh}]},cols:[['Tanker (KL)',E.wt],['HSIIDC (KL)',E.wh],['Total water (KL)',E.wv],['Cost ₹',E.wc]]};
 const mkc=(id,sp,R)=>{charts[id]=new Chart($(id),{type:sp.stack?'bar':'line',data:{labels:R.map(dd),datasets:sp.sets.map((s,k)=>({type:s.t||(sp.stack?'bar':'line'),label:s.n,data:R.map(i=>s.v[i]),yAxisID:s.y||'y',backgroundColor:s.c||COL[k],borderColor:s.c||COL[k],tension:.35,cubicInterpolationMode:'monotone',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#fff',pointBorderWidth:2,pointBorderColor:s.c||COL[k],fill:!sp.stack&&!s.y&&!s.t&&sp.sets.length>1?false:false,stack:sp.stack?'s':undefined,datalabels:DL(true,{formatter:sp.stack?(v=>v?fm(v):''):fm,font:{size:9,weight:'600'},rotation:R.length>8?-90:0,anchor:sp.stack?'center':'end',align:sp.stack?'center':(s.y||sp.sets.length===1?'top':'bottom'),color:sp.stack?'#fff':undefined,offset:3})}))},options:{layout:{padding:{top:22,right:10}},responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{stacked:!!sp.stack,beginAtZero:true,grace:'12%'},y1:{position:'right',beginAtZero:true,grace:'12%',grid:{drawOnChartArea:false},display:sp.sets.some(s=>s.y)}},plugins:{legend:{labels:{boxWidth:10,font:{size:10}}}}}})};
@@ -468,10 +471,141 @@ function drawE(){
  $('page').innerHTML=`<div class="crumb"><b>${p.t}</b> › ${day?'Day-wise':'Monthly'} · Consumption in ${u} · Cost in ₹</div><h2 class="sec">Key Metrics · Consumption &amp; Cost</h2><div class="kpis">${K}</div>${dgc}
  <h2 class="sec">Total Consumption vs Total Cost</h2><div class="g2"><div class="card"><h3>${day?'Last 7-Day Trend':'Daily Trend'}<small>consumption (left) vs cost (right)</small></h3><div class="ch"><canvas id="e1"></canvas></div></div><div class="card"><h3>${c2.t}</h3><div class="ch"><canvas id="e2"></canvas></div></div></div>${PIEH}${bd}
  
- <div class="foot">Source: Sheet1 – Daily Power, Fuel, Water &amp; R&amp;M Cost Tracker. DHBVN ₹9/unit, Solar ₹4.5/unit, PNG ₹66.85/SCM, Diesel ₹95.94/L, Tanker water ₹85/KL (HSIIDC water carries no cost in the sheet). DG cost = "Total Diesel Cost" = diesel consumed in DG × diesel rate (diesel used for other purposes is not costed in the sheet). Total cost = Sheet1 "Total Power &amp; Fuel Cost" (DHBVN + Solar + PNG gas + DG diesel); consumption = "Total Electricity" (DHBVN + Solar + DG units); Effective Rate = Total cost ÷ Total electricity. DG ₹/kWh and SFC (kWh ÷ litres, recalculated because the Excel column shows #REF!) use only days where both DG kWh and diesel litres are entered; ⚠ marks days to check.</div>`;
+ <div class="foot">Source: Sheet1 – Daily Power, Fuel, Water &amp; R&amp;M Cost Tracker. DHBVN ₹9/unit, Solar ₹4.5/unit, PNG ₹${f(PNG_SCM,2)}/SCM (SCM × 0.035 × ₹${f(PNG_MMBTU,0)}), Diesel ₹95.94/L, Tanker water ₹85/KL (HSIIDC water carries no cost in the sheet). DG cost = "Total Diesel Cost" = diesel consumed in DG × diesel rate (diesel used for other purposes is not costed in the sheet). Total cost = Sheet1 "Total Power &amp; Fuel Cost" (DHBVN + Solar + PNG gas + DG diesel); consumption = "Total Electricity" (DHBVN + Solar + DG units); Effective Rate = Total cost ÷ Total electricity. DG ₹/kWh and SFC (kWh ÷ litres, recalculated because the Excel column shows #REF!) use only days where both DG kWh and diesel litres are entered; ⚠ marks days to check.</div>`;
  Object.values(charts).forEach(x=>x.destroy());const cst=getComputedStyle(document.body);Chart.defaults.color=cst.getPropertyValue('--dim');Chart.defaults.font.family='Inter';Chart.defaults.borderColor=cst.getPropertyValue('--bd');
  mkc('e1',{sets:[{n:'Consumption ('+u+')',v:c,c:'#008080'},{n:'Cost (₹)',v:k,y:'y1',c:'#f5921f'}]},R);mkc('e2',c2,R);
  if($('e3'))charts.e3=new Chart($('e3'),{type:'doughnut',data:{labels:SRCP.map(x=>x[0]),datasets:[{data:pv,backgroundColor:SRCP.map(x=>x[2]),borderWidth:0,borderRadius:8,spacing:3,hoverOffset:14,datalabels:DL(true,{color:'#fff',font:{size:13,weight:'800'},formatter:v=>pvs&&v/pvs>=0.04?f(v/pvs*100,1)+'%':''})}]},options:{responsive:true,maintainAspectRatio:false,cutout:'64%',animation:{animateRotate:true,duration:900},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+f(c.parsed)+' units · '+f(pvs?c.parsed/pvs*100:0,1)+'%'}}}},plugins:[{id:'ctr',afterDraw(ch){const {ctx,chartArea:a}=ch,x=(a.left+a.right)/2,y=(a.top+a.bottom)/2,col=getComputedStyle(document.body).color;ctx.save();ctx.textAlign='center';ctx.fillStyle=col;ctx.font='800 26px sans-serif';ctx.fillText(f(pvs),x,y+4);ctx.globalAlpha=.65;ctx.font='600 11px sans-serif';ctx.fillText('TOTAL UNITS',x,y+22);ctx.restore()}}]});
+}
+/* ===================== MONTHLY COMPARISON · selected month vs compared month (all months in context) ===================== */
+const setCM=m=>{S.cmM=m;draw()};
+function drawC(){
+ const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim(),mf=m=>new Date(m+'-01T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}),ML=m=>new Date(m+'-01T00:00').toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+ document.querySelectorAll('.it').forEach(b=>b.classList.toggle('act',b.dataset.k===S.dep));
+ $('ttl').textContent='TOTAL PRODUCTIVE MAINTENANCE (TPM) - Monthly Comparison';$('upd').textContent=dfull(N-1);
+ Object.values(charts).forEach(x=>x.destroy());charts={};
+ if(MO.length<2){$('page').innerHTML='<div class="card empty">Monthly comparison needs at least two months of data. Add the next month\'s Excel file to the Data folder and rebuild.</div>';return}
+ const tot=S.cmM==='tot';
+ const mo=MO.includes(S.cmSel)?S.cmSel:MO[MO.length-1];S.cmSel=mo;
+ let cm=S.cm;if(!MO.includes(cm)||cm===mo){const k=MO.indexOf(mo);cm=MO[k-1]||MO[k+1]}S.cm=cm;
+ const A=AR_LIST().filter(a=>a.n!=='RO');                       /* RO is a memo item, not part of the total */
+ const MD=MO.map(m=>{const I=monthDays(m),days=I.length,dayTot=I.map(i=>sum(A.map(a=>a.v[i]))),e=k=>sum(I.map(i=>E[k][i])),pkv=Math.max(...dayTot);
+  return{m,I,days,dayTot,dep:A.map(a=>sum(I.map(i=>a.v[i]))),pkv,pki:I[dayTot.indexOf(pkv)],tot:sum(dayTot),tel:e('tel'),cu:e('cu'),su:e('su'),du:e('du'),cost:e('tcost')}});
+ const sel=MD.find(x=>x.m===mo),cmp=MD.find(x=>x.m===cm),iS=MO.indexOf(mo),iC=MO.indexOf(cm);
+ const CS='#008080',CC='#f5921f',CG=css('--bd')==='#264646'?'#5b7f7f':'#a9bebe';                /* selected / compared / other months */
+ const col=m=>m===mo?CS:m===cm?CC:CG;
+ const V=(r,x)=>tot?x:x/r.days,U=tot?'kWh':'kWh/day',dg=tot?0:1;
+ const pct=(a,b)=>b?(a-b)/b*100:0,sg=(v,d=1)=>(v>0?'+':'')+f(v,d),rate=r=>r.tel?r.cost/r.tel:0;
+ const pill=p=>`<span class="pill ${Math.abs(p)<5?'na':p>0?'bad':'good'}">${p>0?'▲':p<0?'▼':''} ${f(Math.abs(p),1)}%</span>`;
+ /* ---------- numbers used all over the page ---------- */
+ const ap=pct(sel.tot/sel.days,cmp.tot/cmp.days),rp=pct(rate(sel),rate(cmp)),dAvg=sel.tot/sel.days-cmp.tot/cmp.days,dCost=sel.cost/sel.days-cmp.cost/cmp.days;
+ const rows=A.map((a,i)=>{const v=MD.map(r=>V(r,r.dep[i])),s=v[iS],c=v[iC];return{n:a.n,v,s,c,d:s-c,p:pct(s,c)}});
+ const byS=[...rows].sort((a,b)=>b.s-a.s),byD=[...rows].sort((a,b)=>b.d-a.d),depNames=byS.map(r=>r.n),planTot=sum(rows.map(r=>r.s))||1;
+ if(!depNames.includes(S.cmDep))S.cmDep=depNames[0];
+ const calD=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate(),part=[[mo,sel],[cm,cmp]].filter(([m,r])=>r.days<calD(m)).map(([m,r])=>`${ML(m)} has ${r.days} of ${calD(m)} days`);
+ /* ---------- KPI cards ---------- */
+ const kdot=c=>`<span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${c};margin-right:6px;vertical-align:0"></span>`,kln=(c,t)=>`<div style="font-size:11px;color:var(--dim);line-height:1.55;white-space:nowrap">${kdot(c)}${t}</div>`,kb=(a,b)=>{if(!b)return'';const p=(a-b)/b*100,cl=Math.abs(p)<5?'na':(p>0?'bad':'good');return`<span class="b ${cl}">${p>0?'▲':'▼'} ${f(Math.abs(p),1)}%</span>`},B=t=>`<b style="color:var(--tx)">${t}</b>`;
+ const kk=(l,vs,u,sx,vc,cx,badge,c)=>kpi(l,vs,u,kln(CS,B(ML(mo))+sx),badge,c);
+ const bl=tot?'Month Total':'Avg / Day',ol=tot?'Avg / Day':'Month Total',vS=V(sel,sel.tot),vC=V(cmp,cmp.tot);
+ const K=kk(bl,f(vS),U,` · ${sel.days} days`,f(vC),` ${U} · ${cmp.days} days`,kb(vS,vC),'#008080')+
+  kk(ol,f(tot?sel.tot/sel.days:sel.tot),tot?'kWh/day':'kWh',` · ${sel.days} days`,f(tot?cmp.tot/cmp.days:cmp.tot),tot?' kWh/day':' kWh',tot?kb(sel.tot/sel.days,cmp.tot/cmp.days):'','#004d4d')+
+  kk('Peak Day',f(sel.pkv),'kWh',' · '+dd(sel.pki),f(cmp.pkv),' kWh · '+dd(cmp.pki),kb(sel.pkv,cmp.pkv),'#e2483c')+
+  kk('Meter Electricity'+(tot?' · Month':' / Day'),f(V(sel,sel.tel)),U,'',f(V(cmp,cmp.tel)),' '+U,kb(V(sel,sel.tel),V(cmp,cmp.tel)),'#3f8fd2')+
+  kk('Power &amp; Fuel Cost'+(tot?' · Month':' / Day'),'₹'+f(V(sel,sel.cost)),'','','₹'+f(V(cmp,cmp.cost)),tot?'':' / day',kb(V(sel,sel.cost),V(cmp,cmp.cost)),'#f5921f');
+ /* ---------- key takeaways ---------- */
+ const up=byD[0],dn=byD[byD.length-1],top=byS[0];
+ const INS=[[tot?`<b>${ML(mo)}</b> used <b>${f(sel.tot)} kWh</b> in ${sel.days} days against <b>${f(cmp.tot)}</b> in ${cmp.days} days (${ML(cm)}): <b>${sel.tot>cmp.tot?'up':'down'} ${f(Math.abs(pct(sel.tot,cmp.tot)),1)}%</b>.`:`<b>${ML(mo)}</b> averaged <b>${f(sel.tot/sel.days)} kWh/day</b> against <b>${f(cmp.tot/cmp.days)}</b> in ${ML(cm)}: <b>${ap>0?'up':'down'} ${f(Math.abs(ap),1)}%</b>.`,'#008080','1'],
+  [`Biggest increase: <b>${up.n}</b> (${sg(up.d,dg)} ${U}, ${sg(up.p)}%). Biggest drop: <b>${dn.n}</b> (${sg(dn.d,dg)} ${U}, ${sg(dn.p)}%).`,'#e2483c','2'],
+  [`<b>${top.n}</b> is the largest consumer in ${ML(mo)}: <b>${f(top.s/planTot*100,1)}%</b> of the department total.`,'#3f8fd2','3'],
+  [`Power &amp; fuel cost ${tot?'was':'averaged'} <b>₹${f(V(sel,sel.cost))}${tot?'':'/day'}</b> in ${ML(mo)} against <b>₹${f(V(cmp,cmp.cost))}</b> in ${ML(cm)}: <b>${V(sel,sel.cost)>V(cmp,cmp.cost)?'up':'down'} ${f(Math.abs(pct(V(sel,sel.cost),V(cmp,cmp.cost))),1)}%</b>.`,'#f5921f','4']];
+ /* ---------- department bar-table ---------- */
+ const mxD=Math.max(...rows.map(r=>Math.max(r.s,r.c)),1e-9),bw=v=>Math.max(v/mxD*76,v>0?1.2:0),dv=v=>f(v,dg&&v<100?1:0);
+ const depRow=(r,k)=>`<div class="cmx-row${r.n===S.cmDep?' act':''}" data-n="${r.n.replace(/&/g,'&amp;')}" onclick="cmDrill(this.dataset.n)" title="Click for details"><span class="cmx-rk">${k+1}</span><div class="cmx-nm">${r.n}<small>${f(r.s/planTot*100,1)}% of plant</small></div><div><div class="cmx-b"><i style="width:${bw(r.s)}%;background:${CS}"></i><b>${dv(r.s)}</b></div><div class="cmx-b sm"><i style="width:${bw(r.c)}%;background:${CC}"></i><em>${dv(r.c)}</em></div></div><div class="cmx-ch">${pill(r.p)}<small>${sg(r.d,dg)}</small></div></div>`;
+ /* ---------- energy mix ---------- */
+ const SRC=[['DHBVN (grid)','cu','#1b6fb5','#fff'],['Solar','su','#f4b400','#3b2f00'],['DG (diesel)','du','#455a64','#fff']];
+ const segBar=r=>{const t=(r.cu+r.su+r.du)||1;return`<div class="cmx-seg2">${SRC.map(([n,k,c,tc])=>{const p=r[k]/t*100;return`<div style="width:${p}%;background:${c};color:${tc}" title="${n}: ${f(p,1)}%">${p>=9?n.split(' ')[0]+' '+f(p,0)+'%':''}</div>`}).join('')}</div>`};
+ const mixRow=(r,c,lab)=>`<div class="cmx-mix"><div><span class="cmx-dot" style="background:${c}"></span><b>${ML(r.m)}</b><small>${lab}</small></div>${segBar(r)}<div class="cmx-tt"><b>${f(V(r,r.cu+r.su+r.du),dg)}</b> ${U}</div></div>`;
+ const tile=([n,k,c])=>`<div class="cmx-tile" style="border-top-color:${c}"><div class="l"><span class="cmx-dot" style="background:${c}"></span>${n}</div><div class="v">${f(V(sel,sel[k]),dg)}<small> ${U}</small></div><div class="s">${ML(cm)}: ${f(V(cmp,cmp[k]),dg)} ${V(cmp,cmp[k])||V(sel,sel[k])?pill(pct(V(sel,sel[k]),V(cmp,cmp[k]))):''}</div></div>`;
+ /* ---------- comparison table ---------- */
+ const th=r=>`<th class="r" style="border-bottom:3px solid ${col(r.m)}">${ML(r.m)}${r.m===mo?' ●':r.m===cm?' ◆':''}</th>`;
+ const line=(lab,vals,d,cls)=>`<tr${cls?` class="${cls}"`:''}><td>${cls?lab:'<b>'+lab+'</b>'}</td>${vals.map((x,k)=>`<td class="r"${MD[k].m===mo?' style="font-weight:800;background:var(--gd)"':''}>${f(x,d)}</td>`).join('')}<td class="r">${sg(vals[iS]-vals[iC],d)}</td><td class="r">${pill(pct(vals[iS],vals[iC]))}</td><td>${spk(vals)}</td></tr>`;
+ const T=`<table><thead><tr><th>Department</th>${MD.map(th).join('')}<th class="r">Δ ${U}</th><th class="r">Δ %</th><th>Trend</th></tr></thead><tbody>${byS.map(r=>line(r.n,r.v,dg)).join('')}`+
+  line('TOTAL (departments)',MD.map(r=>V(r,r.tot)),dg,'ft')+line('Meter electricity · '+U,MD.map(r=>V(r,r.tel)),dg,'')+line('Power &amp; fuel cost · ₹'+(tot?'':'/day'),MD.map(r=>V(r,r.cost)),0,'')+`</tbody></table>`;
+ /* ---------- page ---------- */
+ const opt=(list,v)=>list.map(m=>`<option value="${m}" ${m===v?'selected':''}>${mf(m)}</option>`).join('');
+ const mini=(id,t,s,p)=>`<div class="card"><div class="cmx-mh"><h3>${t}</h3>${pill(p)}</div><div class="cmx-hint">${s}</div><div class="ch" style="height:232px;min-height:0"><canvas id="${id}"></canvas></div></div>`;
+ const lk=(c,dash)=>`<span style="display:inline-block;width:20px;border-top:3px ${dash?'dashed':'solid'} ${c};vertical-align:3px;margin-right:6px"></span>`,key=`<span style="font-size:12px;color:var(--dim);white-space:nowrap">${lk(CS)}<b style="color:var(--tx)">${ML(mo)}</b> &nbsp;&nbsp; ${lk(CC,1)}<b style="color:var(--tx)">${ML(cm)}</b></span>`;
+ const good=dAvg<=0,dot=c=>`<span class="cmx-dot" style="background:${c}"></span>`;
+ $('page').innerHTML=`<style>
+ .cmx-hero{border-radius:14px;padding:20px 24px;color:#fff;background:linear-gradient(120deg,#003f3f 0%,#006666 55%,#009090 100%);display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,80,80,.28);margin-top:2px}
+ .cmx-hero h1{margin:0;font-size:25px;font-weight:800;letter-spacing:.2px;line-height:1.2}.cmx-hero h1 span{opacity:.65;font-weight:600;margin:0 8px;font-size:18px}
+ .cmx-kick{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;opacity:.75;font-weight:700;margin-bottom:5px}
+ .cmx-sub{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;font-size:13px}.cmx-sub .v{padding:5px 12px;border-radius:999px;font-weight:800}
+ .cmx-warn{margin-top:9px;font-size:11.5px;background:rgba(255,255,255,.14);border-left:3px solid #ffd180;padding:6px 10px;border-radius:6px;max-width:640px}
+ .cmx-ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}.cmx-ctl label{display:block;font-size:9.5px;letter-spacing:.9px;text-transform:uppercase;opacity:.8;font-weight:700;margin-bottom:5px}
+ .cmx-ctl select{background:#fff;color:#162929;border:0;border-radius:9px;height:36px;min-width:158px;max-width:none;font-weight:700;padding:0 10px}
+ .cmx-seg{display:flex;background:rgba(255,255,255,.18);border-radius:10px;padding:3px;height:36px}.cmx-seg button{border:0;background:transparent;color:#fff;font:700 12px Inter,sans-serif;padding:0 13px;border-radius:8px;cursor:pointer}.cmx-seg button.on{background:#fff;color:#006666}
+ .cmx-leg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--dim);margin:12px 4px 0}.cmx-leg b{color:var(--tx)}
+ .cmx-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+ .cmx-g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+ .cmx-split{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:stretch}
+ .cmx-mh{display:flex;justify-content:space-between;align-items:center;gap:8px}.cmx-mh h3{margin:0}.cmx-hint{font-size:11px;color:var(--faint);margin:3px 0 8px}
+ .cmx-hd,.cmx-row{display:grid;grid-template-columns:24px minmax(96px,150px) minmax(0,1fr) 86px;gap:10px;align-items:center}
+ .cmx-hd{font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--faint);font-weight:700;padding:0 8px 6px;border-bottom:1px solid var(--bd);margin-bottom:4px}.cmx-hd .r{text-align:right}
+ .cmx-row{padding:6px 8px;border-radius:9px;cursor:pointer;border-left:3px solid transparent}.cmx-row:hover{background:var(--panel2)}.cmx-row.act{background:var(--gd);border-left-color:#008080}
+ .cmx-rk{width:20px;height:20px;border-radius:6px;background:var(--panel2);border:1px solid var(--bd);font-size:10px;font-weight:800;color:var(--dim);text-align:center;line-height:18px}.cmx-row.act .cmx-rk{background:#008080;border-color:#008080;color:#fff}
+ .cmx-nm{font-size:12px;font-weight:700;color:var(--tx);line-height:1.2}.cmx-nm small{display:block;font-size:10px;color:var(--faint);font-weight:500;margin-top:1px}
+ .cmx-b{display:flex;align-items:center;gap:6px;height:14px}.cmx-b i{display:block;height:100%;border-radius:4px;flex:none}.cmx-b b{font-size:11.5px;font-weight:800;color:var(--tx)}.cmx-b em{font-size:10.5px;font-style:normal;font-weight:600;color:var(--dim)}.cmx-b.sm{height:9px;margin-top:3px}
+ .cmx-ch{text-align:right;line-height:1.35}.cmx-ch small{display:block;font-size:10px;color:var(--dim);font-weight:600}
+ .cmx-mix{display:grid;grid-template-columns:130px minmax(0,1fr) 130px;gap:14px;align-items:center;margin:10px 0}.cmx-mix small{display:block;color:var(--faint);font-size:10px;margin-left:16px}.cmx-tt{text-align:right;font-size:12px;color:var(--dim)}.cmx-tt b{font-size:15px;color:var(--tx)}
+ .cmx-seg2{display:flex;height:34px;border-radius:9px;overflow:hidden;background:var(--panel2);border:1px solid var(--bd)}.cmx-seg2 div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0}
+ .cmx-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}.cmx-tile{border:1px solid var(--bd);border-top:3px solid;border-radius:10px;padding:10px 12px;background:var(--panel2)}.cmx-tile .l{font-size:10px;letter-spacing:.6px;text-transform:uppercase;font-weight:700;color:var(--faint)}.cmx-tile .v{font-size:22px;font-weight:800;color:var(--tx);margin:2px 0}.cmx-tile .v small{font-size:11px;color:var(--dim);font-weight:600}.cmx-tile .s{font-size:11px;color:var(--dim)}
+ @media(max-width:1000px){.cmx-split{grid-template-columns:1fr}}
+ @media(max-width:700px){.cmx-hero{padding:16px}.cmx-hero h1{font-size:19px}.cmx-hd,.cmx-row{grid-template-columns:minmax(84px,120px) minmax(0,1fr) 72px}.cmx-rk,.cmx-hd span:first-child{display:none}.cmx-mix{grid-template-columns:1fr}.cmx-tt{text-align:left}.cmx-ctl select{min-width:140px}}
+ </style>
+ <div class="cmx-hero"><div><div class="cmx-kick">Monthly comparison</div><h1>${mf(mo)}<span>vs</span>${mf(cm)}</h1>
+  <div class="cmx-sub"><span class="v" style="background:${good?'#d7f5e3':'#fde1de'};color:${good?'#0b6b3a':'#a8281d'}">${ap<=0?'▼':'▲'} ${f(Math.abs(ap),1)}% ${ap<=0?'lower':'higher'} daily energy use than ${mf(cm)}</span><span>${f(Math.abs(dAvg))} kWh/day ${dAvg<=0?'less':'more'} · ₹${f(Math.abs(dCost))}/day ${dCost<=0?'less':'more'} power &amp; fuel cost</span></div>
+  ${part.length?`<div class="cmx-warn">ⓘ ${part.join(' and ')} reported, so Avg / Day is the fair comparison.</div>`:''}</div>
+  <div class="cmx-ctl"><div><label>Selected month</label><select onchange="S.cmSel=this.value;draw()">${opt(MO,mo)}</select></div><div><label>Compare with</label><select onchange="S.cm=this.value;draw()">${opt(MO.filter(m=>m!==mo),cm)}</select></div><div><label>Basis</label><div class="cmx-seg"><button class="${tot?'':'on'}" onclick="setCM('avg')">Avg / Day</button><button class="${tot?'on':''}" onclick="setCM('tot')">Month Total</button></div></div></div></div>
+ <div class="cmx-leg"><span>${dot(CS)}<b>${ML(mo)}</b> selected · ${sel.days} days</span><span>${dot(CC)}<b>${ML(cm)}</b> compared · ${cmp.days} days</span>${MO.length>2?`<span>${dot(CG)}other months</span>`:''}<span style="margin-left:auto">Change = ${ML(mo)} vs ${ML(cm)} · <b style="color:#e2483c">▲ red = used more</b> · <b style="color:#1fa15a">▼ green = used less</b></span></div>
+ <h2 class="sec">Key Metrics</h2><div class="kpis">${K}</div>
+ <h2 class="sec">Key Takeaways</h2><div class="og" style="grid-template-columns:repeat(auto-fit,minmax(235px,1fr))">${INS.map(([t,c,i])=>`<div class="oi" style="--c:${c}"><i style="color:${c};background:${c}22">${i}</i><div>${t}</div></div>`).join('')}</div>
+ <h2 class="sec">Month by Month</h2><div class="cmx-g3">
+  ${mini('m1','Energy Used','kWh '+(tot?'per month':'per day'),ap)}${mini('m2','Power &amp; Fuel Cost','₹ '+(tot?'per month':'per day'),pct(sel.cost/sel.days,cmp.cost/cmp.days))}</div>
+ <h2 class="sec">Day by Day</h2><div class="card"><div class="cmx-mh"><h3>Daily Plant Consumption<small>kWh</small></h3>${key}</div><div class="cmx-hint">Each point is one day. Dips are Sundays and holidays. The highest day of each month is labelled.</div><div class="ch" style="height:310px;min-height:0"><canvas id="m4"></canvas></div></div>
+ <h2 class="sec">Departments</h2><div class="cmx-split">
+  <div class="card"><div class="cmx-mh"><h3>Ranking by Consumption<small>${U} · click a row for details</small></h3></div>
+   <div class="cmx-hd" style="margin-top:8px"><span></span><span>Department</span><span>${dot(CS)}${ML(mo)} &nbsp; ${dot(CC)}${ML(cm)}</span><span class="r">Change vs ${ML(cm)}</span></div>${byS.map(depRow).join('')}</div>
+  <div class="card" style="display:flex;flex-direction:column"><div class="cmx-mh"><h3>Drill Down<small>pick a department</small></h3></div><div id="drill" style="display:flex;flex-direction:column;flex:1;min-height:0;margin-top:8px"></div></div></div>
+ <h2 class="sec">Energy Source</h2><div class="card"><div class="cmx-mh"><h3>Where the Electricity Came From<small>${U} · share of total</small></h3></div>
+  ${mixRow(sel,CS,'selected')}${mixRow(cmp,CC,'compared')}<div class="cmx-tiles">${SRC.map(tile).join('')}</div></div>
+ <h2 class="sec">Full Comparison Table <small style="text-transform:none;letter-spacing:0;color:var(--faint);font-weight:500">all months</small></h2><div class="card"><div class="tw" style="max-height:none">${T}</div></div>
+ <div class="foot">Departments counted: ${A.map(a=>a.n).join(', ')} (RO is a memo item and excluded). Months have a different number of reported days, so <b>Avg / Day</b> is the fair basis; use <b>Month Total</b> only for like-for-like periods. ● selected month, ◆ compared month. Days whose next-day reading is not yet entered are not included.</div>`;
+ /* ---------- charts ---------- */
+ Chart.defaults.color=css('--dim');Chart.defaults.font.family='Inter';Chart.defaults.borderColor=css('--bd');
+ const base={responsive:true,maintainAspectRatio:false},nodl={display:false},legend={position:'top',align:'end',labels:{usePointStyle:true,pointStyle:'line',boxWidth:30,boxHeight:12,padding:14,font:{size:12,weight:'600'}}},labs=MD.map(r=>ML(r.m)),panel=css('--panel')||'#fff';
+ /* one bar per month: selected = teal, compared = orange, others = grey */
+ const bars=(id,vals,fmt)=>{charts[id]=new Chart($(id),{type:'bar',data:{labels:labs,datasets:[{data:vals,backgroundColor:MD.map(r=>col(r.m)),borderRadius:8,maxBarThickness:62,datalabels:DL(true,{anchor:'end',align:'end',offset:3,font:{size:12,weight:'800'},formatter:fmt})}]},
+  options:{...base,layout:{padding:{top:24}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.parsed.y)}}},scales:{y:{display:false,beginAtZero:true,grace:'8%'},x:{grid:{display:false},border:{color:css('--bd')},ticks:{font:{size:11,weight:'600'}}}}}})};
+ bars('m1',MD.map(r=>V(r,r.tot)),v=>f(v)+' kWh');
+ bars('m2',MD.map(r=>V(r,r.cost)),v=>'₹'+f(v));
+ /* day-by-day lines (peak day labelled) */
+ const mkLine=(m,get,c,fill,dash)=>{const byDay={};m.I.forEach(i=>byDay[+D.dates[i].slice(8,10)]=get(i));const data=Array.from({length:31},(_,i)=>byDay[i+1]==null?null:byDay[i+1]),mxv=Math.max(...data.filter(x=>x!=null),0),pk=data.indexOf(mxv);
+  return{label:ML(m.m),borderColor:c,backgroundColor:fill,fill:!!fill,borderWidth:m.m===mo?3.4:2.4,borderDash:dash||[],pointRadius:x=>x.dataIndex===pk?5.5:(m.m===mo?2.5:0),pointBackgroundColor:c,pointBorderColor:'#fff',pointBorderWidth:1.5,pointHoverRadius:5,tension:.3,cubicInterpolationMode:'monotone',spanGaps:false,order:m.m===mo?0:1,data,
+   datalabels:{display:x=>x.dataIndex===pk&&mxv>0,anchor:'end',align:'top',offset:6,clip:false,color:c,backgroundColor:panel,borderColor:c,borderWidth:1.5,borderRadius:6,padding:{top:2,bottom:2,left:6,right:6},font:{size:11,weight:'800'},formatter:v=>f(v)}}};
+ const lineOpts=(pad)=>({...base,interaction:{mode:'index',intersect:false},layout:{padding:{top:pad,right:10}},plugins:{legend:{display:false},tooltip:{callbacks:{title:t=>'Day '+t[0].label,label:c=>c.parsed.y==null?'':' '+c.dataset.label+': '+f(c.parsed.y,1)+' kWh'}}},scales:{x:{title:{display:true,text:'Day of month',font:{size:11}},ticks:{font:{size:10}},grid:{display:false}},y:{beginAtZero:true,grace:'6%',ticks:{font:{size:10},callback:v=>f(v)}}}});
+ charts.m4=new Chart($('m4'),{type:'line',data:{labels:Array.from({length:31},(_,i)=>i+1),datasets:[mkLine(sel,i=>sel.dayTot[sel.I.indexOf(i)],CS,'rgba(0,128,128,.14)'),mkLine(cmp,i=>cmp.dayTot[cmp.I.indexOf(i)],CC,null,[7,5])]},options:lineOpts(34)});
+ /* ---------- drill-down ---------- */
+ const chip=(l,v,u,s,c)=>`<div style="border:1px solid var(--bd);border-top:3px solid ${c};border-radius:9px;padding:8px 10px;background:var(--panel2);min-width:0"><div style="font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);font-weight:700">${l}</div><div style="font-size:19px;font-weight:800;color:var(--tx);line-height:1.25">${v}<span style="font-size:11px;font-weight:600;color:var(--dim)"> ${u}</span></div><div style="font-size:10.5px;color:var(--dim);min-height:15px">${s}</div></div>`;
+ const renderDrill=()=>{const n=S.cmDep,ri=A.findIndex(a=>a.n===n),a=A[ri],r=rows.find(x=>x.n===n);if(!a||!r)return;
+  if(charts.m6){charts.m6.destroy();delete charts.m6}
+  document.querySelectorAll('.cmx-row').forEach(el=>el.classList.toggle('act',el.dataset.n===n));
+  const pk=Math.max(...sel.I.map(i=>a.v[i])),pki=sel.I.find(i=>a.v[i]===pk);
+  $('drill').innerHTML=`<select style="font-weight:700;width:100%;max-width:none;margin-bottom:10px" onchange="cmDrill(this.value)">${depNames.map(x=>`<option ${x===n?'selected':''}>${x}</option>`).join('')}</select>
+   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px">${chip(ML(mo),f(r.s,dg),U,'selected month',CS)}${chip(ML(cm),f(r.c,dg),U,'compared month',CC)}${chip('Change',sg(r.d,dg),U,`${pill(r.p)} ${r.p>0?'used more':r.p<0?'used less':''}`,r.d>0?'#e2483c':'#1fa15a')}${chip('Month total',f(sum(sel.I.map(i=>a.v[i]))),'kWh',ML(mo)+' · '+sel.days+' days','#004d4d')}${chip('Share of plant',f(r.s/planTot*100,1),'%','in '+ML(mo),'#3f8fd2')}${chip('Peak day',f(pk),'kWh',dd(pki),'#7b5ea7')}</div>
+   <div class="cmx-mh" style="margin:0 0 6px"><div class="cmx-hint" style="margin:0">${n}: consumption each day (kWh)</div>${key}</div><div style="position:relative;flex:1;min-height:250px"><canvas id="m6"></canvas></div>`;
+  charts.m6=new Chart($('m6'),{type:'line',data:{labels:Array.from({length:31},(_,i)=>i+1),datasets:[mkLine(sel,i=>a.v[i],CS,'rgba(0,128,128,.14)'),mkLine(cmp,i=>a.v[i],CC,null,[7,5])]},options:lineOpts(30)})};
+ window.cmDrill=n=>{S.cmDep=n;renderDrill()};
+ renderDrill();
 }
 draw();</script>
 </body></html>
