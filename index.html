@@ -560,13 +560,13 @@ function drawDG(){
    +kpi('Diesel Stock Left',f(stock),'L','Closing balance · '+dd(last),sp(E.cl),PU)
    +kpi('Other Diesel Share',f(pc(val(E.oc),val(TC)),1),'%','of total diesel cost',sp(E.oc),OR);
   CH=`<h2 class="sec">Diesel Cost Trend <small>${per}</small></h2>${full(cardH('d1','Diesel Cost · DG vs Other Use','stacked bars = daily cost · line = running total (₹)',has(TC),380))}
-   <h2 class="sec">Meaning Behind the Numbers</h2>${grid(cardH('d3','Cost per kWh · DG vs Grid','DG per unit charge (column J) against DHBVN ₹'+GRID+'/kWh',rser.some(v=>v>0),340)+cardH('d2','Diesel Cost Share','DG vs other use · '+(day?dfull(S.i):MO_LBL(S.mo)),hasP(TC),340))}
+   <h2 class="sec">Meaning Behind the Numbers</h2>${grid(cardH('d3','Cost per kWh · DG vs Grid','DG per unit charge against DHBVN ₹'+GRID+'/kWh',rser.some(v=>v>0),340)+cardH('d2','Diesel Cost Share','DG vs other use · '+(day?dfull(S.i):MO_LBL(S.mo)),hasP(TC),340))}
    ${full(cardH('d4','Diesel Litres · DG vs Other Use','litres per period',has(E.dL)||has(E.ot),320))}`;
   cols=[['DG kWh',E.du,1],['DG diesel (L)',E.dL,0],['₹ / kWh',E.dr,2,'r'],['DG cost ₹',E.dc,0],['Other diesel (L)',E.ot,0],['Other cost ₹',E.oc,0],['Total diesel ₹',TC,0]];
  }else if(S.dep==='E_dgd'){
   const bst=bothD.length?bothD.reduce((b,i)=>E.dr[i]<E.dr[b]?i:b,bothD[0]):null,wst=bothD.length?bothD.reduce((b,i)=>E.dr[i]>E.dr[b]?i:b,bothD[0]):null;
   H=hero({lab:'DG UNITS GENERATED · '+pre.toUpperCase(),val:f(val(E.du),1),unit:'kWh',sub:'DG diesel cost ₹'+f(val(E.dc))+' for '+f(val(E.dL))+' litres',
-   stats:[['⛽',f(val(E.dL))+' L','Diesel used in DG'],['₹',f(rate,2)+' /kWh','Per unit charge (col J)'],['₹','₹'+f(val(E.dc)),'DG diesel cost (col K)'],['⚙',f(sf(P1),2)+' kWh/L','Fuel efficiency (SFC)']],
+   stats:[['⛽',f(val(E.dL))+' L','Diesel used in DG'],['₹',f(rate,2)+' /kWh','Per unit charge'],['₹','₹'+f(val(E.dc)),'DG diesel cost'],['⚙',f(sf(P1),2)+' kWh/L','Fuel efficiency (SFC)']],
    bt:'Cost of one unit · DG vs grid',bar:rows([['DG diesel',rate,'#ff8a80','₹'+f(rate,2)],['DHBVN grid',GRID,'#4fd1c5','₹'+f(GRID,2)]])+`<div class="hint">${rate?'DG power costs <b>'+f(rate/GRID,1)+'×</b> grid power':'No DG day with both kWh &amp; diesel in this selection'}</div>`});
   K=kpi('DG Run Days',f(runD.length),'days','of '+P1.length+' · DG produced units',sp(E.du),T1)
    +kpi('Avg on Run Days',f(runD.length?g(E.du,runD)/runD.length:0,1),'kWh','per day DG was running',sp(E.du),SL)
@@ -574,21 +574,21 @@ function drawDG(){
    +kpi('Costliest Day',wst==null?'–':f(E.dr[wst],2),'₹/kWh',wst==null?'':dd(wst),'',RD)
    +kpi('Extra Cost vs Grid','₹'+f(extra(P1)),'','vs DHBVN ₹'+GRID+'/kWh','',OR)
    +kpi('Diesel Stock Left',f(stock),'L','Closing · '+dd(last),sp(E.cl),PU);
-  CH=`<h2 class="sec">DG Generation vs Diesel <small>${per}</small></h2>${full(cardH('d1','DG Units vs Diesel Litres','bars = DG units kWh (col H) · line = diesel litres (col I)',has(E.du)||has(E.dL),380))}
-   <h2 class="sec">Cost &amp; Efficiency</h2>${grid(cardH('d2','DG Per Unit Charge','₹ per kWh (col J) · red = above average · dashed = average · dotted = grid ₹'+GRID,rser.some(v=>v>0),340)+cardH('d3','DG Fuel Efficiency (SFC)','kWh generated per litre of diesel',sser.some(v=>v>0),340))}
-   ${full(cardH('d4','DG Diesel Cost','bars = daily cost (col K) · line = running total (₹)',has(E.dc),340))}`;
+  CH=`<h2 class="sec">DG Generation vs Diesel <small>${per}</small></h2>${full(cardH('d1','DG Units vs Diesel Litres','bars = DG units (kWh) · line = diesel litres',has(E.du)||has(E.dL),380))}
+   <h2 class="sec">Cost &amp; Efficiency</h2>${grid(cardH('d2','DG Per Unit Charge','₹ per kWh · red = above average · dashed = average · dotted = grid ₹'+GRID,rser.some(v=>v>0),340)+cardH('d3','DG Fuel Efficiency (SFC)','kWh generated per litre of diesel',sser.some(v=>v>0),340))}
+   ${full(cardH('d4','DG Diesel Cost','bars = daily cost · line = running total (₹)',has(E.dc),340))}`;
   cols=[['DG kWh',E.du,1],['DG diesel (L)',E.dL,0],['₹ / kWh',E.dr,2,'r'],['DG cost ₹',E.dc,0],['SFC kWh/L',0,2,'s']];
  }else{
   const ud=P1.filter(i=>E.ot[i]>0),pk=ud.length?ud.reduce((b,i)=>E.ot[i]>E.ot[b]?i:b,ud[0]):null;
   H=hero({lab:'OTHER DIESEL COST · '+pre.toUpperCase(),val:'₹'+f(val(E.oc)),sub:f(val(E.ot))+' litres used outside the DG',
-   stats:[['⛽',f(val(E.ot))+' L','Other diesel (col Q)'],['₹','₹'+f(val(E.oc)),'Other diesel cost (col R)'],['₹',f(g(E.ot,P1)?g(E.oc,P1)/g(E.ot,P1):0,2)+' /L','Diesel rate'],['📅',f(ud.length)+' days','Days with other use']],
+   stats:[['⛽',f(val(E.ot))+' L','Other diesel used'],['₹','₹'+f(val(E.oc)),'Other diesel cost'],['₹',f(g(E.ot,P1)?g(E.oc,P1)/g(E.ot,P1):0,2)+' /L','Diesel rate'],['📅',f(ud.length)+' days','Days with other use']],
    bt:'Where the diesel went',bar:stack([['DG diesel',val(E.dL),'#4fd1c5',f(val(E.dL))+' L'],['Other use',val(E.ot),'#ffb74d',f(val(E.ot))+' L']])});
   K=kpi('Avg per Use-day',f(ud.length?g(E.ot,ud)/ud.length:0,1),'L','on days other diesel was used',sp(E.ot),PU)
    +kpi('Biggest Use Day',pk==null?'–':f(E.ot[pk]),'L',pk==null?'':dd(pk)+' · ₹'+f(E.oc[pk]),sp(E.oc),OR)
    +kpi('Other Share of Litres',f(pc(val(E.ot),val(E.ot)+val(E.dL)),1),'%','Other ÷ (DG + other)','',SL)
    +kpi('Total Diesel Cost','₹'+f(val(TC)),'','DG ₹'+f(val(E.dc))+' + other ₹'+f(val(E.oc)),sp(TC),T1)
    +kpi('Diesel Stock Left',f(stock),'L','Closing · '+dd(last),sp(E.cl),T2);
-  CH=`<h2 class="sec">Other Diesel Use <small>${per}</small></h2>${full(cardH('d1','Other Diesel · Litres vs Cost','bars = litres (col Q) · line = cost ₹ (col R)',has(E.ot),380))}
+  CH=`<h2 class="sec">Other Diesel Use <small>${per}</small></h2>${full(cardH('d1','Other Diesel · Litres vs Cost','bars = litres · line = cost (₹)',has(E.ot),380))}
    <h2 class="sec">Running Total &amp; Split</h2>${grid(cardH('d2','Cumulative Other Diesel Cost','running total across the selection (₹)',has(E.oc),340)+cardH('d3','Diesel Litres · DG vs Other','share of total litres',hasP(E.dL)||hasP(E.ot),340))}`;
   cols=[['Other diesel (L)',E.ot,0],['Other cost ₹',E.oc,0],['₹ / L',0,2,'p'],['DG diesel (L)',E.dL,0],['Total diesel ₹',TC,0]];
  }
@@ -600,7 +600,7 @@ function drawDG(){
  const trs=R.map(i=>`<tr class="${day&&i===S.i?'hl':''}"><td>${dfull(i)}${dgF(i)&&S.dep!=='E_dgo'?' <span title="Check DG kWh / diesel litres in the Excel" style="color:#e2483c;cursor:help">⚠</span>':''}</td>${cols.map(c=>`<td class="r">${cell(c,i)}</td>`).join('')}</tr>`).join('');
  $('page').innerHTML=`<div class="crumb"><b>${t}</b> › ${day?'Day-wise':'Monthly'} · Fuel in litres · Cost in ₹</div>${H}<div class="kpis dgk">${K}</div>${warn}${CH}
   <h2 class="sec">${day?'Last 7 Days':'Daily'} Detail</h2><div class="card"><div class="tw"><table><thead><tr><th>Date</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead><tbody>${trs}<tr class="ft"><td>${day?'7-day total':'Total / weighted rate'}</td>${cols.map(c=>`<td class="r">${foot(c,R)}</td>`).join('')}</tr></tbody></table></div></div>
-  <div class="foot">Source: Sheet1 – Daily Power, Fuel, Water &amp; R&amp;M Cost Tracker. DG units = column H, DG diesel litres = I, DG per unit charge (₹/kWh) = J (= K ÷ H), DG diesel cost = K, other diesel litres = Q, other diesel cost = R. ₹/kWh, SFC (kWh ÷ litres) and "extra cost vs grid" use only days where both DG kWh and diesel litres are entered; grid rate taken as DHBVN ₹${GRID}/unit. Other-diesel cost for Sep–Oct is litres × ₹95.94 (the cost column was added in the Nov sheet).</div>`;
+  <div class="foot">Source: Sheet1 – Daily Power, Fuel, Water &amp; R&amp;M Cost Tracker. DG per unit charge (₹/kWh) = DG diesel cost ÷ DG units. ₹/kWh, SFC (kWh ÷ litres) and "extra cost vs grid" use only days where both DG kWh and diesel litres are entered; grid rate taken as DHBVN ₹${GRID}/unit. Other-diesel cost for Sep–Oct is litres × ₹95.94 (the cost column was added in the Nov sheet).</div>`;
  Object.values(charts).forEach(x=>x.destroy());Chart.defaults.color=cst.getPropertyValue('--dim');Chart.defaults.font.family='Inter';Chart.defaults.borderColor=gridC;
  /* ---- charts ---- */
  const ctr=(txt,s2)=>({id:'ctr',afterDraw(ch){const {ctx,chartArea:a}=ch,x=(a.left+a.right)/2,y=(a.top+a.bottom)/2;ctx.save();ctx.textAlign='center';ctx.fillStyle=cst.color;ctx.font='800 24px sans-serif';ctx.fillText(txt,x,y+4);ctx.globalAlpha=.65;ctx.font='600 11px sans-serif';ctx.fillText(s2,x,y+22);ctx.restore()}}),
